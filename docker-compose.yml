@@ -1,0 +1,33 @@
+services:
+  embercup:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Caddy (below) is the single proxy hop in front of the app.
+      TRUST_PROXY: "1"
+    volumes:
+      - embercup-data:/data
+    expose:
+      - "3000"
+
+  # Automatic HTTPS via Let's Encrypt. Set DOMAIN in .env to your real domain
+  # and point its DNS A record at this server before starting.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [embercup]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    command: caddy reverse-proxy --from ${DOMAIN} --to embercup:3000
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  embercup-data:
+  caddy-data:
+  caddy-config:
